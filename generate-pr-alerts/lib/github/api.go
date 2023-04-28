@@ -22,23 +22,23 @@ type Label struct {
 }
 
 type Pull struct {
-	Url                string  `json:"url"`
-	Id                 int     `json:"id"`
-	HtmlUrl            string  `json:"html_url"`
-	State              string  `json:"state"`
-	Title              string  `json:"title"`
-	User               User    `json:"user"`
-	Body               string  `json:"body"`
-	Labels             []Label `json:"labels"`
-	CreatedAt          string  `json:"created_at"`
-	UpdatedAt          string  `json:"updated_at"`
-	ClosedAt           string  `json:"closed_at"`
-	MergedAt           string  `json:"merged_at"`
 	Assignee           User    `json:"assignee"`
 	Assignees          []User  `json:"assignees"`
-	RequestedReviewers []User  `json:"requested_reviewers"`
 	AuthorAssociation  string  `json:"author_association"`
+	Body               string  `json:"body"`
+	ClosedAt           string  `json:"closed_at"`
+	CreatedAt          string  `json:"created_at"`
+	HtmlUrl            string  `json:"html_url"`
+	Id                 int     `json:"id"`
 	IsDraft            bool    `json:"draft"`
+	Labels             []Label `json:"labels"`
+	MergedAt           string  `json:"merged_at"`
+	RequestedReviewers []User  `json:"requested_reviewers"`
+	State              string  `json:"state"`
+	Title              string  `json:"title"`
+	UpdatedAt          string  `json:"updated_at"`
+	Url                string  `json:"url"`
+	User               User    `json:"user"`
 }
 
 type GithubErrorResponse struct {
