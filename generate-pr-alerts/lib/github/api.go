@@ -41,12 +41,25 @@ type Pull struct {
 	User               User    `json:"user"`
 }
 
+type OrganizationInfo struct {
+	AvatarUrl   string `json:"avatar_url"`
+	Company     string `json:"company"`
+	Description string `json:"description"`
+	HtmlUrl     string `json:"html_url"`
+	Id          int    `json:"id"`
+	Login       string `json:"login"`
+	Name        string `json:"name"`
+	ReposUrl    string `json:"repos_url"`
+	Url         string `json:"url"`
+}
+
 type GithubErrorResponse struct {
 	Message          string `json:"message"`
 	DocumentationURL string `json:"documentation_url"`
 }
 
 type GitHub interface {
+	OrganizationInfo(url *url.URL) (OrganizationInfo, error)
 	Pulls(url *url.URL) ([]Pull, error)
 }
 

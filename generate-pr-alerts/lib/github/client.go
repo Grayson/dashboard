@@ -25,6 +25,11 @@ func (c *Client) Pulls(url *url.URL) ([]Pull, error) {
 	return w.get(url, c.personalAccessToken, *c.client)
 }
 
+func (c *Client) OrganizationInfo(url *url.URL) (OrganizationInfo, error) {
+	w := wrapper[OrganizationInfo]{}
+	return w.get(url, c.personalAccessToken, *c.client)
+}
+
 type wrapper[T any] struct {
 	empty T
 }
