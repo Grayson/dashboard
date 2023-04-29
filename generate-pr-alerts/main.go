@@ -34,6 +34,11 @@ func main() {
 	actualToken := flag.String("token", token, "GitHub Personal Access Token (can also set via environment variable `GITHUB_TOKEN`)")
 	flag.Parse()
 
+	if *actualToken == "" {
+		fmt.Println("No GitHub token provided")
+		os.Exit(-1)
+	}
+
 	client := github.NewClient(http.DefaultClient, *actualToken)
 	url, _ := url.Parse("https://api.github.com/repos/Grayson/dashboard/pulls")
 	pulls, err := client.Pulls(url)
