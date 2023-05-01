@@ -29,7 +29,56 @@ func Run(config *Config) RunResult {
 		}
 	}
 
+	for idx, length := 0, len(config.Orgs); idx < length; idx++ {
+		if err := fetchOrgPulls(config.Orgs[idx], client); err != nil {
+			fmt.Println(err)
+			return Failure
+		}
+	}
+
 	return Success
+}
+
+func fetchOrgPulls(orgName string, gh github.GitHub) error {
+	url, err := github.OrganizationInfoUrl(orgName)
+	if err != nil {
+		return err
+	}
+
+	org, err := gh.OrganizationInfo(url)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("# %v\n", org.Login)
+	reposUrl, _ := url.Parse(org.ReposUrl)
+	repos, err := gh.OrganizationRepos(reposUrl)
+	if err != nil {
+		return err
+	}
+
+	for idx, length := 0, len(repos); idx < length; idx++ {
+		pullUrl, err := url.Parse(github.CleanupPullsUrl(repos[idx].PullsUrl))
+		if err != nil {
+			return err
+		}
+
+		pulls, err := gh.Pulls(pullUrl)
+		if err != nil {
+			return err
+		}
+
+		pullLength := len(pulls)
+		fmt.Printf("%v pulls for %v\n", pullLength, repos[idx].Name)
+
+		for pullIdx := 0; pullIdx < pullLength; pullIdx++ {
+			printPull(&pulls[pullIdx])
+		}
+		fmt.Println()
+	}
+	fmt.Println()
+
+	return nil
 }
 
 func fetchRepoPulls(repoInfo string, gh github.GitHub) error {
@@ -61,5 +110,5 @@ func fetchRepoPulls(repoInfo string, gh github.GitHub) error {
 }
 
 func printPull(pull *github.Pull) {
-	fmt.Printf("\"%v\" from %v created at %v", pull.Title, pull.User.Login, pull.CreatedAt)
+	fmt.Printf("\"%v\" from %v created at %v\n", pull.Title, pull.User.Login, pull.CreatedAt)
 }
