@@ -7,7 +7,7 @@ import (
 
 type GitHub interface {
 	OrganizationInfo(url *url.URL) (OrganizationInfo, error)
-	OrganizationRepos(url *url.URL)
+	OrganizationRepos(url *url.URL) ([]OrganizationRepoInfo, error)
 	Pulls(url *url.URL) ([]Pull, error)
 }
 

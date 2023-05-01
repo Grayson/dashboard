@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 )
 
 type Client struct {
@@ -28,6 +29,34 @@ func (c *Client) Pulls(url *url.URL) ([]Pull, error) {
 func (c *Client) OrganizationInfo(url *url.URL) (OrganizationInfo, error) {
 	w := wrapper[OrganizationInfo]{}
 	return w.get(url, c.personalAccessToken, *c.client)
+}
+
+func (c *Client) OrganizationRepos(url *url.URL) ([]OrganizationRepoInfo, error) {
+	const (
+		pageLimit       = 32
+		defaultPageSize = 30
+	)
+
+	info := make([]OrganizationRepoInfo, 0)
+	w := wrapper[[]OrganizationRepoInfo]{}
+
+	for page := 0; page < pageLimit; page++ {
+		query := url.Query()
+		query.Set("page", strconv.Itoa(page))
+		url.RawQuery = query.Encode()
+
+		more, err := w.get(url, c.personalAccessToken, *c.client)
+		if err != nil {
+			return nil, err
+		}
+		info = append(info, more...)
+
+		if len(info) < defaultPageSize {
+			break
+		}
+	}
+
+	return info, nil
 }
 
 type wrapper[T any] struct {
