@@ -51,7 +51,7 @@ func (c *Client) OrganizationRepos(url *url.URL) ([]OrganizationRepoInfo, error)
 		}
 		info = append(info, more...)
 
-		if len(info) < defaultPageSize {
+		if len(more) < defaultPageSize {
 			break
 		}
 	}
