@@ -8,8 +8,13 @@ import (
 const (
 	base  = "https://api.github.com"
 	org   = "orgs"
+	pulls = "pulls"
 	repos = "repos"
 )
+
+func PullsUrl(user string, repo string) (*url.URL, error) {
+	return join(base, user, repo, pulls)
+}
 
 func OrganizationInfoUrl(orgName string) (*url.URL, error) {
 	return join(base, org, orgName)
