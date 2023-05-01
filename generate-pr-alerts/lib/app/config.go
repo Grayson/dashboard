@@ -3,6 +3,7 @@ package app
 import (
 	"flag"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 )
@@ -17,21 +18,51 @@ type Config struct {
 	Orgs  []string `yaml:"orgs"`
 }
 
+type stringArray []string
+
+func (a *stringArray) String() string {
+	return strings.Join(*a, ", ")
+}
+
+func (a *stringArray) Set(s string) error {
+	*a = append(*a, s)
+	return nil
+}
+
 func GatherConfig() (*Config, error) {
-	token, _ := os.LookupEnv(GitHubTokenEnvVar)
 	config, err := getFileConfig()
 
 	if err != nil {
 		return nil, err
 	}
 
-	if config.Token != "" {
-		token = config.Token
+	flagToken, flagOrgs, flagRepos := gatherFlagArgs(flag.CommandLine, os.Args)
+
+	if flagToken != "" {
+		config.Token = flagToken
+	}
+	config.Orgs = append(config.Orgs, flagOrgs...)
+	config.Repos = append(config.Repos, flagRepos...)
+
+	if config.Token == "" {
+		token, _ := os.LookupEnv(GitHubTokenEnvVar)
+		config.Token = token
 	}
 
-	config.Token = *flag.String("token", token, "GitHub Personal Access Token (can also set via environment variable `GITHUB_TOKEN`)")
-	flag.Parse()
 	return config, nil
+}
+
+func gatherFlagArgs(flagSet *flag.FlagSet, args []string) (string, []string, []string) {
+	var token *string
+	flagOrgs := make(stringArray, 0)
+	flagRepos := make(stringArray, 0)
+
+	token = flagSet.String("token", "", "GitHub Personal Access Token (can also set via environment variable `GITHUB_TOKEN`)")
+	flagSet.Var(&flagOrgs, "org", "Organization name to check for repos (can be specified multiple times)")
+	flagSet.Var(&flagRepos, "repo", "Repositories to check for pulls in 'user/repo-name' format (can be specified mulitple times)")
+	flagSet.Parse(args[1:])
+
+	return *token, flagOrgs, flagRepos
 }
 
 func getFileConfig() (*Config, error) {
