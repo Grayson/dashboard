@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"net/http"
+	"path"
 	"strings"
 
 	"github.com/Grayson/dashboard/generate-pr-alerts/lib/github"
@@ -122,5 +123,6 @@ func fetchRepoPulls(repoInfo string, gh github.GitHub) error {
 }
 
 func printPull(pull *github.Pull) {
-	fmt.Printf("* \"%v\" from %v created at %v [#%v](%v)\n", pull.Title, pull.User.Login, pull.CreatedAt, pull.Id, pull.HtmlUrl)
+	number := path.Base(pull.HtmlUrl)
+	fmt.Printf("* \"%v\" from %v created at %v [#%v](%v)\n", pull.Title, pull.User.Login, pull.CreatedAt, number, pull.HtmlUrl)
 }
