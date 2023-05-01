@@ -1,6 +1,9 @@
 package github
 
-import "net/url"
+import (
+	"net/url"
+	"strings"
+)
 
 const (
 	base  = "https://api.github.com"
@@ -14,6 +17,10 @@ func OrganizationInfoUrl(orgName string) (*url.URL, error) {
 
 func OrganizationReposUrl(orgName string) (*url.URL, error) {
 	return join(base, org, orgName, repos)
+}
+
+func CleanupPullsUrl(urlString string) string {
+	return strings.Replace(urlString, "{/number}", "", 1)
 }
 
 func join(first string, rest ...string) (*url.URL, error) {
