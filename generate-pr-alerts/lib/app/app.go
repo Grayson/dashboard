@@ -22,6 +22,11 @@ func Run(config *Config) RunResult {
 	}
 
 	client := github.NewClient(http.DefaultClient, config.Token)
+
+	repoLength := len(config.Repos)
+	if repoLength != 0 {
+		fmt.Println("# Repos")
+	}
 	for _, repo := range config.Repos {
 		if err := fetchRepoPulls(repo, client); err != nil {
 			fmt.Println(err)
@@ -73,7 +78,7 @@ func fetchOrgPulls(orgName string, gh github.GitHub) error {
 			continue
 		}
 
-		fmt.Printf("%v pulls for %v (%v)\n", pullLength, repos[idx].Name, repos[idx].HtmlUrl)
+		fmt.Printf("%v pulls for [%v](%v)\n", pullLength, repos[idx].Name, repos[idx].HtmlUrl)
 
 		for pullIdx := 0; pullIdx < pullLength; pullIdx++ {
 			printPull(&pulls[pullIdx])
@@ -102,6 +107,9 @@ func fetchRepoPulls(repoInfo string, gh github.GitHub) error {
 	}
 
 	pullLength := len(pulls)
+	if pullLength == 0 {
+		return nil
+	}
 	fmt.Printf("%v pulls for %v\n", pullLength, repoInfo)
 
 	for idx := 0; idx < pullLength; idx++ {
@@ -114,5 +122,5 @@ func fetchRepoPulls(repoInfo string, gh github.GitHub) error {
 }
 
 func printPull(pull *github.Pull) {
-	fmt.Printf("\"%v\" from %v created at %v\n", pull.Title, pull.User.Login, pull.CreatedAt)
+	fmt.Printf("* \"%v\" from %v created at %v [#%v](%v)\n", pull.Title, pull.User.Login, pull.CreatedAt, pull.Id, pull.HtmlUrl)
 }
