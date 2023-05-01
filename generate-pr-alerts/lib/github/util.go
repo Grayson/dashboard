@@ -13,7 +13,7 @@ const (
 )
 
 func PullsUrl(user string, repo string) (*url.URL, error) {
-	return join(base, user, repo, pulls)
+	return join(base, repos, user, repo, pulls)
 }
 
 func OrganizationInfoUrl(orgName string) (*url.URL, error) {

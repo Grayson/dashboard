@@ -97,7 +97,7 @@ func TestOrganizationReposUrl(t *testing.T) {
 }
 
 func TestPullsUrl(t *testing.T) {
-	basicUrl, _ := url.Parse("https://api.github.com/name/repo/pulls")
+	basicUrl, _ := url.Parse("https://api.github.com/repos/name/repo/pulls")
 
 	type args struct {
 		user string
