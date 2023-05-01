@@ -73,7 +73,7 @@ func fetchOrgPulls(orgName string, gh github.GitHub) error {
 			continue
 		}
 
-		fmt.Printf("%v pulls for %v\n", pullLength, repos[idx].Name)
+		fmt.Printf("%v pulls for %v (%v)\n", pullLength, repos[idx].Name, repos[idx].HtmlUrl)
 
 		for pullIdx := 0; pullIdx < pullLength; pullIdx++ {
 			printPull(&pulls[pullIdx])
