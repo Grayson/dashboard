@@ -1,5 +1,7 @@
 package github
 
+// https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#list-organization-repositories
+
 type OrganizationRepoInfo struct {
 	Description string `json:"description,omitempty"`
 	FullName    string `json:"full_name,omitempty"`
