@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"path"
 	"strings"
 
@@ -64,30 +65,37 @@ func fetchOrgPulls(orgName string, gh github.GitHub) error {
 	}
 
 	for idx, length := 0, len(repos); idx < length; idx++ {
-		pullUrl, err := url.Parse(github.CleanupPullsUrl(repos[idx].PullsUrl))
-		if err != nil {
+		if err := logRepoPulls(url, repos, idx, gh); err != nil {
 			return err
-		}
-
-		pulls, err := gh.Pulls(pullUrl)
-		if err != nil {
-			return err
-		}
-
-		pullLength := len(pulls)
-		if pullLength == 0 {
-			continue
-		}
-
-		fmt.Printf("%v pulls for [%v](%v)\n", pullLength, repos[idx].Name, repos[idx].HtmlUrl)
-
-		for pullIdx := 0; pullIdx < pullLength; pullIdx++ {
-			printPull(&pulls[pullIdx])
 		}
 		fmt.Println()
 	}
 	fmt.Println()
 
+	return nil
+}
+
+func logRepoPulls(url *url.URL, repos []github.OrganizationRepoInfo, idx int, gh github.GitHub) error {
+	pullUrl, err := url.Parse(github.CleanupPullsUrl(repos[idx].PullsUrl))
+	if err != nil {
+		return err
+	}
+
+	pulls, err := gh.Pulls(pullUrl)
+	if err != nil {
+		return err
+	}
+
+	pullLength := len(pulls)
+	if pullLength == 0 {
+		return nil
+	}
+
+	fmt.Printf("%v pulls for [%v](%v)\n", pullLength, repos[idx].Name, repos[idx].HtmlUrl)
+
+	for pullIdx := 0; pullIdx < pullLength; pullIdx++ {
+		printPull(&pulls[pullIdx])
+	}
 	return nil
 }
 
