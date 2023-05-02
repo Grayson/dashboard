@@ -21,6 +21,12 @@ func NewClient(client *http.Client, personalAccessToken string) *Client {
 	}
 }
 
+func (c *Client) Issues(url *url.URL) ([]IssuesInfo, error) {
+	// TODO: Should this be paged?
+	w := wrapper[[]IssuesInfo]{}
+	return w.get(url, c.personalAccessToken, *c.client)
+}
+
 func (c *Client) Pulls(url *url.URL) ([]Pull, error) {
 	w := wrapper[[]Pull]{}
 	return w.get(url, c.personalAccessToken, *c.client)
