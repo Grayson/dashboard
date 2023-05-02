@@ -65,7 +65,7 @@ func fetchOrgPulls(orgName string, gh github.GitHub) error {
 	}
 
 	for idx, length := 0, len(repos); idx < length; idx++ {
-		if err := logRepoPulls(url, repos, idx, gh); err != nil {
+		if err := logRepoPulls(url, &repos[idx], gh); err != nil {
 			return err
 		}
 		fmt.Println()
@@ -75,8 +75,8 @@ func fetchOrgPulls(orgName string, gh github.GitHub) error {
 	return nil
 }
 
-func logRepoPulls(url *url.URL, repos []github.OrganizationRepoInfo, idx int, gh github.GitHub) error {
-	pullUrl, err := url.Parse(github.CleanupPullsUrl(repos[idx].PullsUrl))
+func logRepoPulls(url *url.URL, repo *github.OrganizationRepoInfo, gh github.GitHub) error {
+	pullUrl, err := url.Parse(github.CleanupPullsUrl(repo.PullsUrl))
 	if err != nil {
 		return err
 	}
@@ -91,7 +91,7 @@ func logRepoPulls(url *url.URL, repos []github.OrganizationRepoInfo, idx int, gh
 		return nil
 	}
 
-	fmt.Printf("%v pulls for [%v](%v)\n", pullLength, repos[idx].Name, repos[idx].HtmlUrl)
+	fmt.Printf("%v pulls for [%v](%v)\n", pullLength, repo.Name, repo.HtmlUrl)
 
 	for pullIdx := 0; pullIdx < pullLength; pullIdx++ {
 		printPull(&pulls[pullIdx])
