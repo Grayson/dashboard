@@ -62,6 +62,7 @@ func (s *Stdout) VisitPull(pull *github.Pull) error {
 }
 
 func (s *Stdout) EndPulls() error {
+	fmt.Println()
 	return nil
 }
 
