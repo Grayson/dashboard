@@ -6,6 +6,7 @@ type OrganizationRepoInfo struct {
 	GitUrl      string `json:"git_url,omitempty"`
 	HtmlUrl     string `json:"html_url,omitempty"`
 	Id          int    `json:"id,omitempty"`
+	IssuesUrl   string `json:"issues_url,omitempty"`
 	Name        string `json:"name,omitempty"`
 	PullsUrl    string `json:"pulls_url,omitempty"`
 	Url         string `json:"url,omitempty"`
