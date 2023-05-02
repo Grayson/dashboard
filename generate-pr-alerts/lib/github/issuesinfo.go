@@ -2,6 +2,8 @@ package github
 
 // https://docs.github.com/en/rest/issues/issues?apiVersion=2022-11-28#list-repository-issues
 
+// TODO: rename to be singular
+
 type IssuesInfo struct {
 	Id          int     `json:"id,omitempty"`
 	Url         string  `json:"url,omitempty"`
