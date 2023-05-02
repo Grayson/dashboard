@@ -65,7 +65,13 @@ func fetchOrgPulls(orgName string, gh github.GitHub) error {
 	}
 
 	for idx, length := 0, len(repos); idx < length; idx++ {
-		if err := logRepoPulls(url, &repos[idx], gh); err != nil {
+		repo := &repos[idx]
+		if err := logRepoPulls(url, repo, gh); err != nil {
+			return err
+		}
+		fmt.Println()
+
+		if err := logRepoIssues(url, repo, gh); err != nil {
 			return err
 		}
 		fmt.Println()
@@ -95,6 +101,29 @@ func logRepoPulls(url *url.URL, repo *github.OrganizationRepoInfo, gh github.Git
 
 	for pullIdx := 0; pullIdx < pullLength; pullIdx++ {
 		printPull(&pulls[pullIdx])
+	}
+	return nil
+}
+
+func logRepoIssues(url *url.URL, repo *github.OrganizationRepoInfo, gh github.GitHub) error {
+	url, err := url.Parse(github.CleanupIssuesUrl(repo.IssuesUrl))
+	if err != nil {
+		return err
+	}
+
+	issues, err := gh.Issues(url)
+	if err != nil {
+		return err
+	}
+
+	length := len(issues)
+	if length == 0 {
+		return nil
+	}
+
+	fmt.Printf("%v issues for [%v](%v)\n", length, repo.Name, repo.HtmlUrl)
+	for idx := 0; idx < length; idx++ {
+		printIssue(&issues[idx])
 	}
 	return nil
 }
@@ -132,5 +161,9 @@ func fetchRepoPulls(repoInfo string, gh github.GitHub) error {
 
 func printPull(pull *github.Pull) {
 	number := path.Base(pull.HtmlUrl)
-	fmt.Printf("* \"%v\" from %v created at %v [#%v](%v)\n", pull.Title, pull.User.Login, pull.CreatedAt, number, pull.HtmlUrl)
+	fmt.Printf("* Pull: \"%v\" from %v created at %v [#%v](%v)\n", pull.Title, pull.User.Login, pull.CreatedAt, number, pull.HtmlUrl)
+}
+
+func printIssue(issue *github.IssuesInfo) {
+	fmt.Printf("* Issue: \"%v\" from %v created at %v [#%v](%v)\n", issue.Title, issue.User.Login, issue.CreatedAt, issue.Number, issue.HtmlUrl)
 }
