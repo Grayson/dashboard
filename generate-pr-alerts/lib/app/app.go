@@ -86,23 +86,7 @@ func logRepoPulls(url *url.URL, repo *github.OrganizationRepoInfo, gh github.Git
 	if err != nil {
 		return err
 	}
-
-	pulls, err := gh.Pulls(pullUrl)
-	if err != nil {
-		return err
-	}
-
-	pullLength := len(pulls)
-	if pullLength == 0 {
-		return nil
-	}
-
-	fmt.Printf("%v pulls for [%v](%v)\n", pullLength, repo.Name, repo.HtmlUrl)
-
-	for pullIdx := 0; pullIdx < pullLength; pullIdx++ {
-		printPull(&pulls[pullIdx])
-	}
-	return nil
+	return printPulls(gh, pullUrl, fmt.Sprintf("[%v](%v)", repo.Name, repo.HtmlUrl))
 }
 
 func logRepoIssues(url *url.URL, repo *github.OrganizationRepoInfo, gh github.GitHub) error {
@@ -139,6 +123,10 @@ func fetchRepoPulls(repoInfo string, gh github.GitHub) error {
 		return err
 	}
 
+	return printPulls(gh, url, repoInfo)
+}
+
+func printPulls(gh github.GitHub, url *url.URL, repoInfo string) error {
 	pulls, err := gh.Pulls(url)
 	if err != nil {
 		return err
