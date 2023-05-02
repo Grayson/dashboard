@@ -30,10 +30,12 @@ func Run(config *Config, target output.Target) RunResult {
 	}
 
 	for idx, length := 0, len(config.Orgs); idx < length; idx++ {
-		if err := fetchOrgPulls(config.Orgs[idx], gh); err != nil {
+		target.StartOrganizationsPhase(config.Orgs)
+		if err := fetchOrgPulls(config.Orgs[idx], gh, target); err != nil {
 			fmt.Println(err)
 			return Failure
 		}
+		target.EndOrganizationsPhase()
 	}
 
 	return Success
@@ -55,7 +57,7 @@ func processUserRepos(repos []string, gh github.GitHub, target output.Target) er
 	return nil
 }
 
-func fetchOrgPulls(orgName string, gh github.GitHub) error {
+func fetchOrgPulls(orgName string, gh github.GitHub, target output.Target) error {
 	url, err := github.OrganizationInfoUrl(orgName)
 	if err != nil {
 		return err
@@ -66,7 +68,7 @@ func fetchOrgPulls(orgName string, gh github.GitHub) error {
 		return err
 	}
 
-	fmt.Printf("# %v\n", org.Login)
+	target.VisitOrganization(org)
 	reposUrl, _ := url.Parse(org.ReposUrl)
 	repos, err := gh.OrganizationRepos(reposUrl)
 	if err != nil {
@@ -75,32 +77,35 @@ func fetchOrgPulls(orgName string, gh github.GitHub) error {
 
 	for idx, length := 0, len(repos); idx < length; idx++ {
 		repo := &repos[idx]
-		if err := logRepoPulls(url, repo, gh); err != nil {
+		target.StartRepo(repo)
+		if err := logRepoPulls(url, repo, gh, target); err != nil {
 			return err
 		}
 
-		if err := logRepoIssues(url, repo, gh); err != nil {
+		if err := logRepoIssues(url, repo, gh, target); err != nil {
 			return err
 		}
+		target.EndRepo()
 	}
 	fmt.Println()
 
 	return nil
 }
 
-func logRepoPulls(url *url.URL, repo *github.OrganizationRepoInfo, gh github.GitHub) error {
+func logRepoPulls(url *url.URL, repo *github.OrganizationRepoInfo, gh github.GitHub, target output.Target) error {
 	pullUrl, err := url.Parse(github.CleanupPullsUrl(repo.PullsUrl))
 	if err != nil {
 		return err
 	}
-	if err := printPulls(gh, pullUrl, fmt.Sprintf("[%v](%v)", repo.Name, repo.HtmlUrl)); err != nil {
+	if err := printPulls(gh, pullUrl, repo, target); err != nil {
 		return err
 	}
+	// TODO: Evaluate this Println
 	fmt.Println()
 	return nil
 }
 
-func logRepoIssues(url *url.URL, repo *github.OrganizationRepoInfo, gh github.GitHub) error {
+func logRepoIssues(url *url.URL, repo *github.OrganizationRepoInfo, gh github.GitHub, target output.Target) error {
 	url, err := url.Parse(github.CleanupIssuesUrl(repo.IssuesUrl))
 	if err != nil {
 		return err
@@ -116,11 +121,11 @@ func logRepoIssues(url *url.URL, repo *github.OrganizationRepoInfo, gh github.Gi
 		return nil
 	}
 
-	fmt.Printf("%v issues for [%v](%v)\n", length, repo.Name, repo.HtmlUrl)
+	target.StartIssues(issues)
 	for idx := 0; idx < length; idx++ {
-		printIssue(&issues[idx])
+		target.VisitIssue(issues[idx])
 	}
-	fmt.Println()
+	target.EndIssues()
 
 	return nil
 }
@@ -159,8 +164,4 @@ func printPulls(gh github.GitHub, url *url.URL, repoInfo string, target output.T
 	target.EndPulls()
 
 	return nil
-}
-
-func printIssue(issue *github.IssuesInfo) {
-	fmt.Printf("* Issue: \"%v\" from %v created at %v [#%v](%v)\n", issue.Title, issue.User.Login, issue.CreatedAt, issue.Number, issue.HtmlUrl)
 }
