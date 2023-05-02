@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"path"
 	"strings"
 
 	"github.com/Grayson/dashboard/generate-pr-alerts/lib/github"
@@ -49,7 +48,7 @@ func processUserRepos(repos []string, gh github.GitHub, target output.Target) er
 	}
 
 	for _, repo := range repos {
-		if err := fetchRepoPulls(repo, gh); err != nil {
+		if err := fetchRepoPulls(repo, gh, target); err != nil {
 			return err
 		}
 	}
@@ -126,7 +125,9 @@ func logRepoIssues(url *url.URL, repo *github.OrganizationRepoInfo, gh github.Gi
 	return nil
 }
 
-func fetchRepoPulls(repoInfo string, gh github.GitHub) error {
+func fetchRepoPulls(repoInfo string, gh github.GitHub, target output.Target) error {
+	// TODO: Fetch repo information and add StartRepo call
+
 	split := strings.Split(repoInfo, "/")
 	if len(split) != 2 {
 		return fmt.Errorf("unexpected repo format '%v' (expected 'username/reponame')", repoInfo)
@@ -137,10 +138,10 @@ func fetchRepoPulls(repoInfo string, gh github.GitHub) error {
 		return err
 	}
 
-	return printPulls(gh, url, repoInfo)
+	return printPulls(gh, url, repoInfo, target)
 }
 
-func printPulls(gh github.GitHub, url *url.URL, repoInfo string) error {
+func printPulls(gh github.GitHub, url *url.URL, repoInfo string, target output.Target) error {
 	pulls, err := gh.Pulls(url)
 	if err != nil {
 		return err
@@ -150,20 +151,14 @@ func printPulls(gh github.GitHub, url *url.URL, repoInfo string) error {
 	if pullLength == 0 {
 		return nil
 	}
-	fmt.Printf("%v pulls for %v\n", pullLength, repoInfo)
 
+	target.StartPulls(pulls)
 	for idx := 0; idx < pullLength; idx++ {
-		printPull(&pulls[idx])
+		target.VisitPull(pulls[idx])
 	}
-
-	fmt.Println()
+	target.EndPulls()
 
 	return nil
-}
-
-func printPull(pull *github.Pull) {
-	number := path.Base(pull.HtmlUrl)
-	fmt.Printf("* Pull: \"%v\" from %v created at %v [#%v](%v)\n", pull.Title, pull.User.Login, pull.CreatedAt, number, pull.HtmlUrl)
 }
 
 func printIssue(issue *github.IssuesInfo) {
