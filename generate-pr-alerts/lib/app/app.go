@@ -69,12 +69,10 @@ func fetchOrgPulls(orgName string, gh github.GitHub) error {
 		if err := logRepoPulls(url, repo, gh); err != nil {
 			return err
 		}
-		fmt.Println()
 
 		if err := logRepoIssues(url, repo, gh); err != nil {
 			return err
 		}
-		fmt.Println()
 	}
 	fmt.Println()
 
@@ -86,7 +84,11 @@ func logRepoPulls(url *url.URL, repo *github.OrganizationRepoInfo, gh github.Git
 	if err != nil {
 		return err
 	}
-	return printPulls(gh, pullUrl, fmt.Sprintf("[%v](%v)", repo.Name, repo.HtmlUrl))
+	if err := printPulls(gh, pullUrl, fmt.Sprintf("[%v](%v)", repo.Name, repo.HtmlUrl)); err != nil {
+		return err
+	}
+	fmt.Println()
+	return nil
 }
 
 func logRepoIssues(url *url.URL, repo *github.OrganizationRepoInfo, gh github.GitHub) error {
@@ -109,6 +111,8 @@ func logRepoIssues(url *url.URL, repo *github.OrganizationRepoInfo, gh github.Gi
 	for idx := 0; idx < length; idx++ {
 		printIssue(&issues[idx])
 	}
+	fmt.Println()
+
 	return nil
 }
 
