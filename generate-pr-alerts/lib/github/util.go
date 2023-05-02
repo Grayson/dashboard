@@ -25,7 +25,15 @@ func OrganizationReposUrl(orgName string) (*url.URL, error) {
 }
 
 func CleanupPullsUrl(urlString string) string {
-	return strings.Replace(urlString, "{/number}", "", 1)
+	return removeNumberSuffix(urlString)
+}
+
+func CleanupIssuesUrl(urlString string) string {
+	return removeNumberSuffix(urlString)
+}
+
+func removeNumberSuffix(s string) string {
+	return strings.Replace(s, "{/number}", "", 1)
 }
 
 func join(first string, rest ...string) (*url.URL, error) {

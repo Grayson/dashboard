@@ -6,6 +6,7 @@ import (
 )
 
 type GitHub interface {
+	Issues(url *url.URL) ([]IssuesInfo, error)
 	OrganizationInfo(url *url.URL) (OrganizationInfo, error)
 	OrganizationRepos(url *url.URL) ([]OrganizationRepoInfo, error)
 	Pulls(url *url.URL) ([]Pull, error)

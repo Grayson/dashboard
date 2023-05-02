@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"path"
 	"strings"
 
@@ -64,27 +65,51 @@ func fetchOrgPulls(orgName string, gh github.GitHub) error {
 	}
 
 	for idx, length := 0, len(repos); idx < length; idx++ {
-		pullUrl, err := url.Parse(github.CleanupPullsUrl(repos[idx].PullsUrl))
-		if err != nil {
+		repo := &repos[idx]
+		if err := logRepoPulls(url, repo, gh); err != nil {
 			return err
 		}
 
-		pulls, err := gh.Pulls(pullUrl)
-		if err != nil {
+		if err := logRepoIssues(url, repo, gh); err != nil {
 			return err
 		}
+	}
+	fmt.Println()
 
-		pullLength := len(pulls)
-		if pullLength == 0 {
-			continue
-		}
+	return nil
+}
 
-		fmt.Printf("%v pulls for [%v](%v)\n", pullLength, repos[idx].Name, repos[idx].HtmlUrl)
+func logRepoPulls(url *url.URL, repo *github.OrganizationRepoInfo, gh github.GitHub) error {
+	pullUrl, err := url.Parse(github.CleanupPullsUrl(repo.PullsUrl))
+	if err != nil {
+		return err
+	}
+	if err := printPulls(gh, pullUrl, fmt.Sprintf("[%v](%v)", repo.Name, repo.HtmlUrl)); err != nil {
+		return err
+	}
+	fmt.Println()
+	return nil
+}
 
-		for pullIdx := 0; pullIdx < pullLength; pullIdx++ {
-			printPull(&pulls[pullIdx])
-		}
-		fmt.Println()
+func logRepoIssues(url *url.URL, repo *github.OrganizationRepoInfo, gh github.GitHub) error {
+	url, err := url.Parse(github.CleanupIssuesUrl(repo.IssuesUrl))
+	if err != nil {
+		return err
+	}
+
+	issues, err := gh.Issues(url)
+	if err != nil {
+		return err
+	}
+
+	length := len(issues)
+	if length == 0 {
+		return nil
+	}
+
+	fmt.Printf("%v issues for [%v](%v)\n", length, repo.Name, repo.HtmlUrl)
+	for idx := 0; idx < length; idx++ {
+		printIssue(&issues[idx])
 	}
 	fmt.Println()
 
@@ -102,6 +127,10 @@ func fetchRepoPulls(repoInfo string, gh github.GitHub) error {
 		return err
 	}
 
+	return printPulls(gh, url, repoInfo)
+}
+
+func printPulls(gh github.GitHub, url *url.URL, repoInfo string) error {
 	pulls, err := gh.Pulls(url)
 	if err != nil {
 		return err
@@ -124,5 +153,9 @@ func fetchRepoPulls(repoInfo string, gh github.GitHub) error {
 
 func printPull(pull *github.Pull) {
 	number := path.Base(pull.HtmlUrl)
-	fmt.Printf("* \"%v\" from %v created at %v [#%v](%v)\n", pull.Title, pull.User.Login, pull.CreatedAt, number, pull.HtmlUrl)
+	fmt.Printf("* Pull: \"%v\" from %v created at %v [#%v](%v)\n", pull.Title, pull.User.Login, pull.CreatedAt, number, pull.HtmlUrl)
+}
+
+func printIssue(issue *github.IssuesInfo) {
+	fmt.Printf("* Issue: \"%v\" from %v created at %v [#%v](%v)\n", issue.Title, issue.User.Login, issue.CreatedAt, issue.Number, issue.HtmlUrl)
 }
