@@ -23,15 +23,15 @@ func Run(config *Config, target output.Target) RunResult {
 		return Failure
 	}
 
-	client := github.NewClient(http.DefaultClient, config.Token)
+	gh := github.NewClient(http.DefaultClient, config.Token)
 
-	if err := processUserRepos(config.Repos, client, target); err != nil {
+	if err := processUserRepos(config.Repos, gh, target); err != nil {
 		fmt.Println(err)
 		return Failure
 	}
 
 	for idx, length := 0, len(config.Orgs); idx < length; idx++ {
-		if err := fetchOrgPulls(config.Orgs[idx], client); err != nil {
+		if err := fetchOrgPulls(config.Orgs[idx], gh); err != nil {
 			fmt.Println(err)
 			return Failure
 		}
