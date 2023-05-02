@@ -17,7 +17,7 @@ const (
 	Failure
 )
 
-func Run(config *Config) RunResult {
+func Run(config *Config, target output.Target) RunResult {
 	if config.Token == "" {
 		fmt.Println("No GitHub token provided")
 		return Failure
@@ -25,15 +25,9 @@ func Run(config *Config) RunResult {
 
 	client := github.NewClient(http.DefaultClient, config.Token)
 
-	repoLength := len(config.Repos)
-	if repoLength != 0 {
-		fmt.Println("# Repos")
-	}
-	for _, repo := range config.Repos {
-		if err := fetchRepoPulls(repo, client); err != nil {
-			fmt.Println(err)
-			return Failure
-		}
+	if err := processUserRepos(config.Repos, client, target); err != nil {
+		fmt.Println(err)
+		return Failure
 	}
 
 	for idx, length := 0, len(config.Orgs); idx < length; idx++ {
@@ -44,6 +38,22 @@ func Run(config *Config) RunResult {
 	}
 
 	return Success
+}
+
+func processUserRepos(repos []string, gh github.GitHub, target output.Target) error {
+	repoLength := len(repos)
+	if repoLength != 0 {
+		if err := target.StartReposPhase(); err != nil {
+			return err
+		}
+	}
+
+	for _, repo := range repos {
+		if err := fetchRepoPulls(repo, gh); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func fetchOrgPulls(orgName string, gh github.GitHub) error {
