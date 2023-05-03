@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/Grayson/dashboard/generate-pr-alerts/lib/app"
+	"github.com/Grayson/dashboard/generate-pr-alerts/lib/output"
 )
 
 func main() {
@@ -13,7 +14,7 @@ func main() {
 		panic(err)
 	}
 
-	if exitCode := app.Run(config); exitCode != app.Success {
+	if exitCode := app.Run(config, output.STDOUT); exitCode != app.Success {
 		os.Exit(int(exitCode))
 	}
 }

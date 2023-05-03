@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Grayson/dashboard/generate-pr-alerts/lib/github"
+	"github.com/Grayson/dashboard/generate-pr-alerts/lib/output"
 )
 
 type RunResult int
@@ -24,29 +25,35 @@ func Run(config *Config, target output.Target) RunResult {
 
 	gh := github.NewClient(http.DefaultClient, config.Token)
 
+	target.Start()
+
 	if err := processUserRepos(config.Repos, gh, target); err != nil {
 		fmt.Println(err)
 		return Failure
 	}
 
+	target.StartOrganizationsPhase()
 	for idx, length := 0, len(config.Orgs); idx < length; idx++ {
-		target.StartOrganizationsPhase(config.Orgs)
 		if err := fetchOrgPulls(config.Orgs[idx], gh, target); err != nil {
 			fmt.Println(err)
 			return Failure
 		}
-		target.EndOrganizationsPhase()
 	}
+	target.EndOrganizationsPhase()
+
+	target.End()
 
 	return Success
 }
 
 func processUserRepos(repos []string, gh github.GitHub, target output.Target) error {
 	repoLength := len(repos)
-	if repoLength != 0 {
-		if err := target.StartReposPhase(); err != nil {
-			return err
-		}
+	if repoLength == 0 {
+		return nil
+	}
+
+	if err := target.StartReposPhase(); err != nil {
+		return err
 	}
 
 	for _, repo := range repos {
@@ -54,7 +61,7 @@ func processUserRepos(repos []string, gh github.GitHub, target output.Target) er
 			return err
 		}
 	}
-	return nil
+	return target.EndReposPhase()
 }
 
 func fetchOrgPulls(orgName string, gh github.GitHub, target output.Target) error {
@@ -68,7 +75,7 @@ func fetchOrgPulls(orgName string, gh github.GitHub, target output.Target) error
 		return err
 	}
 
-	target.VisitOrganization(org)
+	target.VisitOrganization(&org)
 	reposUrl, _ := url.Parse(org.ReposUrl)
 	repos, err := gh.OrganizationRepos(reposUrl)
 	if err != nil {
@@ -97,7 +104,7 @@ func logRepoPulls(url *url.URL, repo *github.OrganizationRepoInfo, gh github.Git
 	if err != nil {
 		return err
 	}
-	if err := printPulls(gh, pullUrl, repo, target); err != nil {
+	if err := printPulls(gh, pullUrl, target); err != nil {
 		return err
 	}
 	// TODO: Evaluate this Println
@@ -123,7 +130,7 @@ func logRepoIssues(url *url.URL, repo *github.OrganizationRepoInfo, gh github.Gi
 
 	target.StartIssues(issues)
 	for idx := 0; idx < length; idx++ {
-		target.VisitIssue(issues[idx])
+		target.VisitIssue(&issues[idx])
 	}
 	target.EndIssues()
 
@@ -143,10 +150,10 @@ func fetchRepoPulls(repoInfo string, gh github.GitHub, target output.Target) err
 		return err
 	}
 
-	return printPulls(gh, url, repoInfo, target)
+	return printPulls(gh, url, target)
 }
 
-func printPulls(gh github.GitHub, url *url.URL, repoInfo string, target output.Target) error {
+func printPulls(gh github.GitHub, url *url.URL, target output.Target) error {
 	pulls, err := gh.Pulls(url)
 	if err != nil {
 		return err
@@ -159,7 +166,7 @@ func printPulls(gh github.GitHub, url *url.URL, repoInfo string, target output.T
 
 	target.StartPulls(pulls)
 	for idx := 0; idx < pullLength; idx++ {
-		target.VisitPull(pulls[idx])
+		target.VisitPull(&pulls[idx])
 	}
 	target.EndPulls()
 

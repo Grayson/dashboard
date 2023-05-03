@@ -12,9 +12,7 @@ type Target interface {
 	StartOrganizationsPhase() error
 	EndOrganizationsPhase() error
 
-	StartOrganizations(orgs []github.OrganizationInfo) error
 	VisitOrganization(org *github.OrganizationInfo) error
-	EndOrganizations() error
 
 	StartRepo(repo *github.OrganizationRepoInfo) error
 

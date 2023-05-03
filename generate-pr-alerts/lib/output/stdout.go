@@ -7,6 +7,8 @@ import (
 	"github.com/Grayson/dashboard/generate-pr-alerts/lib/github"
 )
 
+var STDOUT = &Stdout{}
+
 type Stdout struct {
 	repo *github.OrganizationRepoInfo
 }
