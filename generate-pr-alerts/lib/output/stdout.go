@@ -34,16 +34,8 @@ func (s *Stdout) EndOrganizationsPhase() error {
 	return nil
 }
 
-func (s *Stdout) StartOrganizations(orgs []github.OrganizationInfo) error {
-	return nil
-}
-
 func (s *Stdout) VisitOrganization(org *github.OrganizationInfo) error {
 	fmt.Printf("# %v\n", org.Login)
-	return nil
-}
-
-func (s *Stdout) EndOrganizations() error {
 	return nil
 }
 
