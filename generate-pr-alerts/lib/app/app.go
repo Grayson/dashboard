@@ -17,13 +17,14 @@ const (
 	Failure
 )
 
-func Run(config *Config, target output.Target) RunResult {
+func Run(config *Config) RunResult {
 	if config.Token == "" {
 		fmt.Println("No GitHub token provided")
 		return Failure
 	}
 
 	gh := github.NewClient(http.DefaultClient, config.Token)
+	target := createTarget(config)
 
 	target.Start()
 
@@ -44,6 +45,17 @@ func Run(config *Config, target output.Target) RunResult {
 	target.End()
 
 	return Success
+}
+
+func createTarget(config *Config) output.Target {
+	if config.Json == "" {
+		return output.STDOUT
+	}
+
+	return output.NewMultiTarget(
+		output.STDOUT,
+		output.NewJsonTarget(config.Json),
+	)
 }
 
 func processUserRepos(repos []string, gh github.GitHub, target output.Target) error {

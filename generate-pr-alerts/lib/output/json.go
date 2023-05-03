@@ -7,7 +7,7 @@ import (
 	"github.com/Grayson/dashboard/generate-pr-alerts/lib/github"
 )
 
-func CreateJsonTarget(path string) *Json {
+func NewJsonTarget(path string) *Json {
 	return &Json{
 		path: path,
 		r:    root{},
