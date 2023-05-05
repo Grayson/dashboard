@@ -16,6 +16,7 @@ type Config struct {
 	Token string   `yaml:"token"`
 	Repos []string `yaml:"repos"`
 	Orgs  []string `yaml:"orgs"`
+	Json  string   `yaml:"json"`
 }
 
 type stringArray []string
@@ -36,11 +37,15 @@ func GatherConfig() (*Config, error) {
 		return nil, err
 	}
 
-	flagToken, flagOrgs, flagRepos := gatherFlagArgs(flag.CommandLine, os.Args)
+	flagToken, flagJson, flagOrgs, flagRepos := gatherFlagArgs(flag.CommandLine, os.Args)
 
 	if flagToken != "" {
 		config.Token = flagToken
 	}
+	if flagJson != "" {
+		config.Json = flagJson
+	}
+
 	config.Orgs = append(config.Orgs, flagOrgs...)
 	config.Repos = append(config.Repos, flagRepos...)
 
@@ -52,17 +57,19 @@ func GatherConfig() (*Config, error) {
 	return config, nil
 }
 
-func gatherFlagArgs(flagSet *flag.FlagSet, args []string) (string, []string, []string) {
+func gatherFlagArgs(flagSet *flag.FlagSet, args []string) (string, string, []string, []string) {
 	var token *string
+	var json *string
 	flagOrgs := make(stringArray, 0)
 	flagRepos := make(stringArray, 0)
 
 	token = flagSet.String("token", "", "GitHub Personal Access Token (can also set via environment variable `GITHUB_TOKEN`)")
+	json = flagSet.String("json", "", "If specified, will generate JSON output at path provided")
 	flagSet.Var(&flagOrgs, "org", "Organization name to check for repos (can be specified multiple times)")
 	flagSet.Var(&flagRepos, "repo", "Repositories to check for pulls in 'user/repo-name' format (can be specified mulitple times)")
 	flagSet.Parse(args[1:])
 
-	return *token, flagOrgs, flagRepos
+	return *token, *json, flagOrgs, flagRepos
 }
 
 func getFileConfig() (*Config, error) {

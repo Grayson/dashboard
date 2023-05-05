@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"path"
 	"strings"
 
 	"github.com/Grayson/dashboard/generate-pr-alerts/lib/github"
+	"github.com/Grayson/dashboard/generate-pr-alerts/lib/output"
 )
 
 type RunResult int
@@ -23,30 +23,60 @@ func Run(config *Config) RunResult {
 		return Failure
 	}
 
-	client := github.NewClient(http.DefaultClient, config.Token)
+	gh := github.NewClient(http.DefaultClient, config.Token)
+	target := createTarget(config)
 
-	repoLength := len(config.Repos)
-	if repoLength != 0 {
-		fmt.Println("# Repos")
-	}
-	for _, repo := range config.Repos {
-		if err := fetchRepoPulls(repo, client); err != nil {
-			fmt.Println(err)
-			return Failure
-		}
+	target.Start()
+
+	if err := processUserRepos(config.Repos, gh, target); err != nil {
+		fmt.Println(err)
+		return Failure
 	}
 
+	target.StartOrganizationsPhase()
 	for idx, length := 0, len(config.Orgs); idx < length; idx++ {
-		if err := fetchOrgPulls(config.Orgs[idx], client); err != nil {
+		if err := fetchOrgPulls(config.Orgs[idx], gh, target); err != nil {
 			fmt.Println(err)
 			return Failure
 		}
 	}
+	target.EndOrganizationsPhase()
+
+	target.End()
 
 	return Success
 }
 
-func fetchOrgPulls(orgName string, gh github.GitHub) error {
+func createTarget(config *Config) output.Target {
+	if config.Json == "" {
+		return output.STDOUT
+	}
+
+	return output.NewMultiTarget(
+		output.STDOUT,
+		output.NewJsonTarget(config.Json),
+	)
+}
+
+func processUserRepos(repos []string, gh github.GitHub, target output.Target) error {
+	repoLength := len(repos)
+	if repoLength == 0 {
+		return nil
+	}
+
+	if err := target.StartReposPhase(); err != nil {
+		return err
+	}
+
+	for _, repo := range repos {
+		if err := fetchRepoPulls(repo, gh, target); err != nil {
+			return err
+		}
+	}
+	return target.EndReposPhase()
+}
+
+func fetchOrgPulls(orgName string, gh github.GitHub, target output.Target) error {
 	url, err := github.OrganizationInfoUrl(orgName)
 	if err != nil {
 		return err
@@ -57,7 +87,7 @@ func fetchOrgPulls(orgName string, gh github.GitHub) error {
 		return err
 	}
 
-	fmt.Printf("# %v\n", org.Login)
+	target.VisitOrganization(&org)
 	reposUrl, _ := url.Parse(org.ReposUrl)
 	repos, err := gh.OrganizationRepos(reposUrl)
 	if err != nil {
@@ -66,32 +96,35 @@ func fetchOrgPulls(orgName string, gh github.GitHub) error {
 
 	for idx, length := 0, len(repos); idx < length; idx++ {
 		repo := &repos[idx]
-		if err := logRepoPulls(url, repo, gh); err != nil {
+		target.StartRepo(repo)
+		if err := logRepoPulls(url, repo, gh, target); err != nil {
 			return err
 		}
 
-		if err := logRepoIssues(url, repo, gh); err != nil {
+		if err := logRepoIssues(url, repo, gh, target); err != nil {
 			return err
 		}
+		target.EndRepo()
 	}
 	fmt.Println()
 
 	return nil
 }
 
-func logRepoPulls(url *url.URL, repo *github.OrganizationRepoInfo, gh github.GitHub) error {
+func logRepoPulls(url *url.URL, repo *github.OrganizationRepoInfo, gh github.GitHub, target output.Target) error {
 	pullUrl, err := url.Parse(github.CleanupPullsUrl(repo.PullsUrl))
 	if err != nil {
 		return err
 	}
-	if err := printPulls(gh, pullUrl, fmt.Sprintf("[%v](%v)", repo.Name, repo.HtmlUrl)); err != nil {
+	if err := printPulls(gh, pullUrl, target); err != nil {
 		return err
 	}
+	// TODO: Evaluate this Println
 	fmt.Println()
 	return nil
 }
 
-func logRepoIssues(url *url.URL, repo *github.OrganizationRepoInfo, gh github.GitHub) error {
+func logRepoIssues(url *url.URL, repo *github.OrganizationRepoInfo, gh github.GitHub, target output.Target) error {
 	url, err := url.Parse(github.CleanupIssuesUrl(repo.IssuesUrl))
 	if err != nil {
 		return err
@@ -107,16 +140,18 @@ func logRepoIssues(url *url.URL, repo *github.OrganizationRepoInfo, gh github.Gi
 		return nil
 	}
 
-	fmt.Printf("%v issues for [%v](%v)\n", length, repo.Name, repo.HtmlUrl)
+	target.StartIssues(issues)
 	for idx := 0; idx < length; idx++ {
-		printIssue(&issues[idx])
+		target.VisitIssue(&issues[idx])
 	}
-	fmt.Println()
+	target.EndIssues()
 
 	return nil
 }
 
-func fetchRepoPulls(repoInfo string, gh github.GitHub) error {
+func fetchRepoPulls(repoInfo string, gh github.GitHub, target output.Target) error {
+	// TODO: Fetch repo information and add StartRepo call
+
 	split := strings.Split(repoInfo, "/")
 	if len(split) != 2 {
 		return fmt.Errorf("unexpected repo format '%v' (expected 'username/reponame')", repoInfo)
@@ -127,10 +162,10 @@ func fetchRepoPulls(repoInfo string, gh github.GitHub) error {
 		return err
 	}
 
-	return printPulls(gh, url, repoInfo)
+	return printPulls(gh, url, target)
 }
 
-func printPulls(gh github.GitHub, url *url.URL, repoInfo string) error {
+func printPulls(gh github.GitHub, url *url.URL, target output.Target) error {
 	pulls, err := gh.Pulls(url)
 	if err != nil {
 		return err
@@ -140,22 +175,12 @@ func printPulls(gh github.GitHub, url *url.URL, repoInfo string) error {
 	if pullLength == 0 {
 		return nil
 	}
-	fmt.Printf("%v pulls for %v\n", pullLength, repoInfo)
 
+	target.StartPulls(pulls)
 	for idx := 0; idx < pullLength; idx++ {
-		printPull(&pulls[idx])
+		target.VisitPull(&pulls[idx])
 	}
-
-	fmt.Println()
+	target.EndPulls()
 
 	return nil
-}
-
-func printPull(pull *github.Pull) {
-	number := path.Base(pull.HtmlUrl)
-	fmt.Printf("* Pull: \"%v\" from %v created at %v [#%v](%v)\n", pull.Title, pull.User.Login, pull.CreatedAt, number, pull.HtmlUrl)
-}
-
-func printIssue(issue *github.IssuesInfo) {
-	fmt.Printf("* Issue: \"%v\" from %v created at %v [#%v](%v)\n", issue.Title, issue.User.Login, issue.CreatedAt, issue.Number, issue.HtmlUrl)
 }

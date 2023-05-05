@@ -29,11 +29,17 @@ repo information from organizations, or both.  Repos are designated using the
 format `username/reponame`.  For example, specifying this repo would be
 `Grayson/dashboard`.  Organizations are specified by their "login" name.
 
+In addition to printing information to stdout, you can also generate a JSON file
+that contains the top level information about these PRs and Issues.  By default,
+this file is not created.  However, you can specify a file path using the `json`
+key and one will be created at that location.
+
 You can specify this information either as a CLI flag or in a `config.yml` file
 placed in the same folder as the `generate-pr-alerts` executable.  The `token`
 property is a string that can only be set once, but the repos and orgs can be
-specified as arrays (in the YAML) or defined multiple times as CLI flags.  These
-two example configurations should be effectively identical:
+specified as arrays (in the YAML) or defined multiple times as CLI flags.
+
+These two example configurations should be effectively identical:
 
 ```
 token: pat_github_token
@@ -42,10 +48,12 @@ repos:
 - Grayson/code-clone-tool
 orgs:
 - objectiveceo
+json: /Users/grayson/Desktop/output.json
 ```
 
 `$ ./generate-pr-alerts -token pat_github_token -repo Grayson/dashboard -repo
-Grayson/code-clone-tool -orgs objectiveceo`
+Grayson/code-clone-tool -orgs objectiveceo -json
+/Users/grayson/Desktop/output.json`
 
 Here's a brief table summarizing what is an array in the yaml or is repeatable
 on the command line:
@@ -55,6 +63,7 @@ on the command line:
 |`token`          |          |`token`   |            |
 |`repos`          |    ✓     |`repo`    |      ✓     |
 |`orgs`           |    ✓     |`org`     |      ✓     |
+|`json`           |          |`json`    |            |
 
 There may be times when you want to set the token as an environment variable.
 If no token is specified on the command line or in the configuration file,
