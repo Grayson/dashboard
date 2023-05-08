@@ -79,7 +79,7 @@ func waitForAndMapResults(ch chan workerResult, urls chan *url.URL, u *url.URL, 
 			info = append(info, x.more...)
 		}
 
-		shouldContinue = shouldContinue && x.err != nil && (len(x.more) < defaultPageSize)
+		shouldContinue = shouldContinue && x.err != nil && (len(x.more) == defaultPageSize)
 		if shouldContinue {
 			urls <- makeUrl(*u, page)
 			page++
