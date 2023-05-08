@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/Grayson/dashboard/generate-pr-alerts/lib/github"
 	"github.com/Grayson/dashboard/generate-pr-alerts/lib/output"
@@ -94,20 +95,44 @@ func fetchOrgPulls(orgName string, gh github.GitHub, target output.Target) error
 		return err
 	}
 
-	for idx, length := 0, len(repos); idx < length; idx++ {
-		repo := &repos[idx]
-		target.StartRepo(repo)
-		if err := logRepoPulls(url, repo, gh, target); err != nil {
-			return err
-		}
+	repoChan := make(chan *github.OrganizationRepoInfo)
 
-		if err := logRepoIssues(url, repo, gh, target); err != nil {
-			return err
+	go func() {
+		for idx, length := 0, len(repos); idx < length; idx++ {
+			repoChan <- &repos[idx]
 		}
-		target.EndRepo()
+		close(repoChan)
+	}()
+
+	const workerLimit = 4
+	wg := sync.WaitGroup{}
+	for worker := 0; worker < workerLimit; worker++ {
+		wg.Add(1)
+		go func() {
+			defer func() { wg.Done() }()
+			for repo := range repoChan {
+				err = repoWork(repo, url, gh, target)
+				if err != nil {
+					return
+				}
+			}
+		}()
 	}
-	fmt.Println()
+	wg.Wait()
+	defer func() { fmt.Println() }()
+	return err
+}
 
+func repoWork(repo *github.OrganizationRepoInfo, url *url.URL, gh github.GitHub, target output.Target) error {
+	target.StartRepo(repo)
+	if err := logRepoPulls(url, repo, gh, target); err != nil {
+		return err
+	}
+
+	if err := logRepoIssues(url, repo, gh, target); err != nil {
+		return err
+	}
+	target.EndRepo()
 	return nil
 }
 
