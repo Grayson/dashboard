@@ -52,7 +52,7 @@ func (c *Client) OrganizationRepos(u *url.URL) ([]OrganizationRepoInfo, error) {
 	for worker := 0; worker < workerLimit; worker++ {
 		urls <- makeUrl(*u, page)
 		page++
-
+		wg.Add(1)
 		go fetchUrlWork(&wg, urls, c, ch)
 	}
 	go func() {
@@ -103,8 +103,6 @@ type workerResult struct {
 }
 
 func fetchUrlWork(wg *sync.WaitGroup, urls chan *url.URL, c *Client, ch chan workerResult) {
-	wg.Add(1)
-
 	w := wrapper[[]OrganizationRepoInfo]{}
 
 	defer func() {
