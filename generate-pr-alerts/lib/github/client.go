@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"strconv"
 	"sync"
-	"sync/atomic"
 )
 
 type Client struct {
@@ -45,32 +44,31 @@ func (c *Client) OrganizationRepos(u *url.URL) ([]OrganizationRepoInfo, error) {
 		defaultPageSize = 30
 	)
 
-	urls := make(chan *url.URL, 1)
+	makeUrl := func(page int) *url.URL {
+		url := *u
+		query := url.Query()
+		query.Set("page", strconv.Itoa(page))
+		url.RawQuery = query.Encode()
+		return &url
+	}
 
-	// Feed urls into the pipeline
-	go func() {
-		for page := 0; page < pageLimit; page++ {
-			url := *u
-			query := url.Query()
-			query.Set("page", strconv.Itoa(page))
-			url.RawQuery = query.Encode()
-			fmt.Printf("Sending %v\n", url.String())
-			urls <- &url
-		}
-		fmt.Println("Closing urls")
-		close(urls)
-	}()
+	urls := make(chan *url.URL, 4)
+	urls <- makeUrl(0)
+	urls <- makeUrl(1)
+	urls <- makeUrl(2)
+	urls <- makeUrl(3)
+	page := 4
 
 	type x struct {
-		more []OrganizationRepoInfo
-		err  error
+		more   []OrganizationRepoInfo
+		err    error
+		worker int
 	}
 	ch := make(chan x)
 
-	w := wrapper[[]OrganizationRepoInfo]{}
+	// w := wrapper[[]OrganizationRepoInfo]{}
 
 	wg := sync.WaitGroup{}
-	stop := atomic.Bool{}
 	for worker := 0; worker < 4; worker++ {
 		wg.Add(1)
 		go func(worker int) {
@@ -80,13 +78,10 @@ func (c *Client) OrganizationRepos(u *url.URL) ([]OrganizationRepoInfo, error) {
 			}()
 			for url := range urls {
 				fmt.Printf("Loading %v on worker %v\n", url, worker)
-				if stop.Load() {
-					fmt.Printf("Stopping worker %v\n", worker)
-					return
-				}
-				m, e := w.get(url, c.personalAccessToken, *c.client)
-				fmt.Println("Sending")
-				ch <- x{m, e}
+				// m, e := w.get(url, c.personalAccessToken, *c.client)
+				fmt.Printf("Sending %v\n", url)
+				ch <- x{}
+				// ch <- x{m, e}
 			}
 		}(worker)
 	}
@@ -99,17 +94,23 @@ func (c *Client) OrganizationRepos(u *url.URL) ([]OrganizationRepoInfo, error) {
 
 	info := make([]OrganizationRepoInfo, 0)
 	var err error
+	fmt.Println("for loop")
 	for x := range ch {
+		fmt.Println("Receiving...")
 		if x.err != nil {
 			err = x.err
 		} else {
 			info = append(info, x.more...)
 		}
 
-		if err != nil || (len(x.more) < defaultPageSize) {
-			stop.Store(true)
+		shouldContinue := err != nil && (len(x.more) < defaultPageSize)
+		fmt.Printf("shouldContinue: %v\n", shouldContinue)
+		if shouldContinue {
+			urls <- makeUrl(page)
+			page++
 		}
 	}
+	close(urls)
 	fmt.Println("Returning")
 	if err != nil {
 		return nil, err
