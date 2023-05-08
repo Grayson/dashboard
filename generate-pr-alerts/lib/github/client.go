@@ -40,18 +40,14 @@ func (c *Client) OrganizationInfo(url *url.URL) (OrganizationInfo, error) {
 
 func (c *Client) OrganizationRepos(u *url.URL) ([]OrganizationRepoInfo, error) {
 	const (
-		pageLimit       = 32
-		defaultPageSize = 30
-		workerLimit     = 4
+		pageLimit   = 32
+		workerLimit = 4
 	)
 
 	urls := make(chan *url.URL, 4)
 	ch := make(chan workerResult)
 	page := 0
 	wg := sync.WaitGroup{}
-	info := make([]OrganizationRepoInfo, 0)
-	var err error
-	shouldContinue := true
 
 	for worker := 0; worker < workerLimit; worker++ {
 		urls <- makeUrl(*u, page)
@@ -64,14 +60,26 @@ func (c *Client) OrganizationRepos(u *url.URL) ([]OrganizationRepoInfo, error) {
 		close(ch)
 	}()
 
+	info, err := waitForAndMapResults(ch, urls, u, page)
+	close(urls)
+
+	return info, err
+}
+
+func waitForAndMapResults(ch chan workerResult, urls chan *url.URL, u *url.URL, page int) ([]OrganizationRepoInfo, error) {
+	const defaultPageSize = 30
+
+	info := make([]OrganizationRepoInfo, 0)
+	shouldContinue := true
+
 	for x := range ch {
 		if x.err != nil {
-			err = x.err
+			return nil, x.err
 		} else {
 			info = append(info, x.more...)
 		}
 
-		shouldContinue = shouldContinue && err != nil && (len(x.more) < defaultPageSize)
+		shouldContinue = shouldContinue && x.err != nil && (len(x.more) < defaultPageSize)
 		if shouldContinue {
 			urls <- makeUrl(*u, page)
 			page++
@@ -79,11 +87,6 @@ func (c *Client) OrganizationRepos(u *url.URL) ([]OrganizationRepoInfo, error) {
 			urls <- nil
 		}
 	}
-	close(urls)
-	if err != nil {
-		return nil, err
-	}
-
 	return info, nil
 }
 
