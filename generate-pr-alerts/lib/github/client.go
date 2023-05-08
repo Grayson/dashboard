@@ -57,13 +57,11 @@ func (c *Client) OrganizationRepos(u *url.URL) ([]OrganizationRepoInfo, error) {
 	}
 	go func() {
 		wg.Wait()
+		close(urls)
 		close(ch)
 	}()
 
-	info, err := waitForAndMapResults(ch, urls, u, page)
-	close(urls)
-
-	return info, err
+	return waitForAndMapResults(ch, urls, u, page)
 }
 
 func waitForAndMapResults(ch chan workerResult, urls chan *url.URL, u *url.URL, page int) ([]OrganizationRepoInfo, error) {
@@ -103,11 +101,8 @@ type workerResult struct {
 }
 
 func fetchUrlWork(wg *sync.WaitGroup, urls chan *url.URL, c *Client, ch chan workerResult) {
+	defer func() { wg.Done() }()
 	w := wrapper[[]OrganizationRepoInfo]{}
-
-	defer func() {
-		wg.Done()
-	}()
 	for url := range urls {
 		if url == nil {
 			return
