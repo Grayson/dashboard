@@ -51,6 +51,7 @@ func (c *Client) OrganizationRepos(u *url.URL) ([]OrganizationRepoInfo, error) {
 	wg := sync.WaitGroup{}
 	info := make([]OrganizationRepoInfo, 0)
 	var err error
+	shouldContinue := true
 
 	for worker := 0; worker < workerLimit; worker++ {
 		urls <- makeUrl(*u, page)
@@ -70,7 +71,7 @@ func (c *Client) OrganizationRepos(u *url.URL) ([]OrganizationRepoInfo, error) {
 			info = append(info, x.more...)
 		}
 
-		shouldContinue := err != nil && (len(x.more) < defaultPageSize)
+		shouldContinue = shouldContinue && err != nil && (len(x.more) < defaultPageSize)
 		if shouldContinue {
 			urls <- makeUrl(*u, page)
 			page++
