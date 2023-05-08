@@ -42,6 +42,7 @@ func (c *Client) OrganizationRepos(u *url.URL) ([]OrganizationRepoInfo, error) {
 	const (
 		pageLimit       = 32
 		defaultPageSize = 30
+		workerLimit     = 4
 	)
 
 	makeUrl := func(page int) *url.URL {
@@ -53,35 +54,16 @@ func (c *Client) OrganizationRepos(u *url.URL) ([]OrganizationRepoInfo, error) {
 	}
 
 	urls := make(chan *url.URL, 4)
-	urls <- makeUrl(0)
-	urls <- makeUrl(1)
-	urls <- makeUrl(2)
-	urls <- makeUrl(3)
-	page := 4
 
-	type x struct {
-		more []OrganizationRepoInfo
-		err  error
-	}
-	ch := make(chan x)
+	ch := make(chan workerResult)
 
-	w := wrapper[[]OrganizationRepoInfo]{}
-
+	page := 0
 	wg := sync.WaitGroup{}
-	for worker := 0; worker < 4; worker++ {
-		wg.Add(1)
-		go func() {
-			defer func() {
-				wg.Done()
-			}()
-			for url := range urls {
-				if url == nil {
-					return
-				}
-				m, e := w.get(url, c.personalAccessToken, *c.client)
-				ch <- x{m, e}
-			}
-		}()
+	for worker := 0; worker < workerLimit; worker++ {
+		urls <- makeUrl(page)
+		page++
+
+		go fetchUrlWork(&wg, urls, c, ch)
 	}
 	go func() {
 		wg.Wait()
@@ -111,6 +93,28 @@ func (c *Client) OrganizationRepos(u *url.URL) ([]OrganizationRepoInfo, error) {
 	}
 
 	return info, nil
+}
+
+type workerResult struct {
+	more []OrganizationRepoInfo
+	err  error
+}
+
+func fetchUrlWork(wg *sync.WaitGroup, urls chan *url.URL, c *Client, ch chan workerResult) {
+	wg.Add(1)
+
+	w := wrapper[[]OrganizationRepoInfo]{}
+
+	defer func() {
+		wg.Done()
+	}()
+	for url := range urls {
+		if url == nil {
+			return
+		}
+		m, e := w.get(url, c.personalAccessToken, *c.client)
+		ch <- workerResult{m, e}
+	}
 }
 
 type wrapper[T any] struct {
