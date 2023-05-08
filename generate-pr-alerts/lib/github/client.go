@@ -60,9 +60,8 @@ func (c *Client) OrganizationRepos(u *url.URL) ([]OrganizationRepoInfo, error) {
 	page := 4
 
 	type x struct {
-		more   []OrganizationRepoInfo
-		err    error
-		worker int
+		more []OrganizationRepoInfo
+		err  error
 	}
 	ch := make(chan x)
 
@@ -71,35 +70,27 @@ func (c *Client) OrganizationRepos(u *url.URL) ([]OrganizationRepoInfo, error) {
 	wg := sync.WaitGroup{}
 	for worker := 0; worker < 4; worker++ {
 		wg.Add(1)
-		go func(worker int) {
+		go func() {
 			defer func() {
-				fmt.Printf("Done %v\n", worker)
 				wg.Done()
 			}()
 			for url := range urls {
 				if url == nil {
-					fmt.Printf("Closing %v\n", worker)
 					return
 				}
-				fmt.Printf("Loading %v on worker %v\n", url, worker)
 				m, e := w.get(url, c.personalAccessToken, *c.client)
-				fmt.Printf("Sending %v\n", url)
-				ch <- x{m, e, worker}
+				ch <- x{m, e}
 			}
-		}(worker)
+		}()
 	}
 	go func() {
-		fmt.Println("Waiting on wg")
 		wg.Wait()
-		fmt.Println("Closing ch")
 		close(ch)
 	}()
 
 	info := make([]OrganizationRepoInfo, 0)
 	var err error
-	fmt.Println("for loop")
 	for x := range ch {
-		fmt.Printf("Receiving from worker %v...\n", x.worker)
 		if x.err != nil {
 			err = x.err
 		} else {
@@ -107,7 +98,6 @@ func (c *Client) OrganizationRepos(u *url.URL) ([]OrganizationRepoInfo, error) {
 		}
 
 		shouldContinue := err != nil && (len(x.more) < defaultPageSize)
-		fmt.Printf("shouldContinue: %v\n", shouldContinue)
 		if shouldContinue {
 			urls <- makeUrl(page)
 			page++
@@ -116,7 +106,6 @@ func (c *Client) OrganizationRepos(u *url.URL) ([]OrganizationRepoInfo, error) {
 		}
 	}
 	close(urls)
-	fmt.Println("Returning")
 	if err != nil {
 		return nil, err
 	}
