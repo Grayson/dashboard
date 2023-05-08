@@ -52,16 +52,8 @@ func (c *Client) OrganizationRepos(u *url.URL) ([]OrganizationRepoInfo, error) {
 	info := make([]OrganizationRepoInfo, 0)
 	var err error
 
-	makeUrl := func(page int) *url.URL {
-		url := *u
-		query := url.Query()
-		query.Set("page", strconv.Itoa(page))
-		url.RawQuery = query.Encode()
-		return &url
-	}
-
 	for worker := 0; worker < workerLimit; worker++ {
-		urls <- makeUrl(page)
+		urls <- makeUrl(*u, page)
 		page++
 
 		go fetchUrlWork(&wg, urls, c, ch)
@@ -80,7 +72,7 @@ func (c *Client) OrganizationRepos(u *url.URL) ([]OrganizationRepoInfo, error) {
 
 		shouldContinue := err != nil && (len(x.more) < defaultPageSize)
 		if shouldContinue {
-			urls <- makeUrl(page)
+			urls <- makeUrl(*u, page)
 			page++
 		} else {
 			urls <- nil
@@ -92,6 +84,13 @@ func (c *Client) OrganizationRepos(u *url.URL) ([]OrganizationRepoInfo, error) {
 	}
 
 	return info, nil
+}
+
+func makeUrl(url url.URL, page int) *url.URL {
+	query := url.Query()
+	query.Set("page", strconv.Itoa(page))
+	url.RawQuery = query.Encode()
+	return &url
 }
 
 type workerResult struct {
