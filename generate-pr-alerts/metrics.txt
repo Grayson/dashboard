@@ -1,0 +1,5 @@
+Time to beat:
+go run .  0.70s user 0.72s system 1% cpu 1:23.03 total
+
+Output with 4 workers:
+go run .  0.54s user 0.39s system 2% cpu 40.116 total
