@@ -45,6 +45,13 @@ func (c *Client) OrganizationRepos(u *url.URL) ([]OrganizationRepoInfo, error) {
 		workerLimit     = 4
 	)
 
+	urls := make(chan *url.URL, 4)
+	ch := make(chan workerResult)
+	page := 0
+	wg := sync.WaitGroup{}
+	info := make([]OrganizationRepoInfo, 0)
+	var err error
+
 	makeUrl := func(page int) *url.URL {
 		url := *u
 		query := url.Query()
@@ -53,12 +60,6 @@ func (c *Client) OrganizationRepos(u *url.URL) ([]OrganizationRepoInfo, error) {
 		return &url
 	}
 
-	urls := make(chan *url.URL, 4)
-
-	ch := make(chan workerResult)
-
-	page := 0
-	wg := sync.WaitGroup{}
 	for worker := 0; worker < workerLimit; worker++ {
 		urls <- makeUrl(page)
 		page++
@@ -70,8 +71,6 @@ func (c *Client) OrganizationRepos(u *url.URL) ([]OrganizationRepoInfo, error) {
 		close(ch)
 	}()
 
-	info := make([]OrganizationRepoInfo, 0)
-	var err error
 	for x := range ch {
 		if x.err != nil {
 			err = x.err
