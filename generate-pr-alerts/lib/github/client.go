@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"sync"
 )
 
 type Client struct {
@@ -37,32 +38,78 @@ func (c *Client) OrganizationInfo(url *url.URL) (OrganizationInfo, error) {
 	return w.get(url, c.personalAccessToken, *c.client)
 }
 
-func (c *Client) OrganizationRepos(url *url.URL) ([]OrganizationRepoInfo, error) {
+func (c *Client) OrganizationRepos(u *url.URL) ([]OrganizationRepoInfo, error) {
 	const (
-		pageLimit       = 32
-		defaultPageSize = 30
+		pageLimit   = 32
+		workerLimit = 4
 	)
 
+	urls := make(chan *url.URL, 4)
+	ch := make(chan workerResult)
+	page := 0
+	wg := sync.WaitGroup{}
+
+	for worker := 0; worker < workerLimit; worker++ {
+		urls <- makeUrl(*u, page)
+		page++
+		wg.Add(1)
+		go fetchUrlWork(&wg, urls, c, ch)
+	}
+	go func() {
+		wg.Wait()
+		close(urls)
+		close(ch)
+	}()
+
+	return waitForAndMapResults(ch, urls, u, page)
+}
+
+func waitForAndMapResults(ch chan workerResult, urls chan *url.URL, u *url.URL, page int) ([]OrganizationRepoInfo, error) {
+	const defaultPageSize = 30
+
 	info := make([]OrganizationRepoInfo, 0)
-	w := wrapper[[]OrganizationRepoInfo]{}
+	shouldContinue := true
 
-	for page := 0; page < pageLimit; page++ {
-		query := url.Query()
-		query.Set("page", strconv.Itoa(page))
-		url.RawQuery = query.Encode()
-
-		more, err := w.get(url, c.personalAccessToken, *c.client)
-		if err != nil {
-			return nil, err
+	for x := range ch {
+		if x.err != nil {
+			return nil, x.err
+		} else {
+			info = append(info, x.more...)
 		}
-		info = append(info, more...)
 
-		if len(more) < defaultPageSize {
-			break
+		shouldContinue = shouldContinue && x.err != nil && (len(x.more) == defaultPageSize)
+		if shouldContinue {
+			urls <- makeUrl(*u, page)
+			page++
+		} else {
+			urls <- nil
 		}
 	}
-
 	return info, nil
+}
+
+func makeUrl(url url.URL, page int) *url.URL {
+	query := url.Query()
+	query.Set("page", strconv.Itoa(page))
+	url.RawQuery = query.Encode()
+	return &url
+}
+
+type workerResult struct {
+	more []OrganizationRepoInfo
+	err  error
+}
+
+func fetchUrlWork(wg *sync.WaitGroup, urls chan *url.URL, c *Client, ch chan workerResult) {
+	defer func() { wg.Done() }()
+	w := wrapper[[]OrganizationRepoInfo]{}
+	for url := range urls {
+		if url == nil {
+			return
+		}
+		m, e := w.get(url, c.personalAccessToken, *c.client)
+		ch <- workerResult{m, e}
+	}
 }
 
 type wrapper[T any] struct {
